@@ -28,7 +28,7 @@
 #		/usr/pkg/etc/xen/scripts/mk-conserver-xen reload
 #	}
 #
-#ident "@(#):$Ident$"
+#ident "@(#):mk-conserver-xen.sh,v 1.2 2015/04/21 06:14:26 woods Exp"
 
 tab=$(printf "\t")
 
