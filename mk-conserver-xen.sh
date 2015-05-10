@@ -20,7 +20,9 @@
 #		fi
 #	}
 #
-# /etc/rc.conf.d/xendomains:  edit to add "conserver" to "REQUIRE:" line
+# /etc/rc.d/xendomains:  edit to add "conserver" to the "REQUIRE:" line
+#
+# /etc/rc.conf.d/xendomains:
 #
 #	start_postcmd=xendomains_postcmd
 #	
@@ -28,9 +30,9 @@
 #		/usr/pkg/etc/xen/scripts/mk-conserver-xen reload
 #	}
 #
-#ident "@(#):mk-conserver-xen.sh,v 1.3 2015/04/22 20:54:31 woods Exp"
+#ident "@(#):mk-conserver-xen.sh,v 1.4 2015/05/10 03:39:55 woods Exp"
 
-export PATH=/sbin:/usr/sbin:/usr/pkg/bin:/usr/pkg/sbin
+export PATH=/sbin:/bin:/usr/sbin:/usr/bin:/usr/pkg/bin:/usr/pkg/sbin
 
 tab=$(printf "\t")
 
