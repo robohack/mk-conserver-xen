@@ -30,7 +30,7 @@
 #		/usr/pkg/etc/xen/scripts/mk-conserver-xen reload
 #	}
 #
-#ident "@(#):mk-conserver-xen.sh,v 1.4 2015/05/10 03:39:55 woods Exp"
+#ident "@(#):mk-conserver-xen.sh,v 1.5 2017/12/28 16:34:39 woods Exp"
 
 export PATH=/sbin:/bin:/usr/sbin:/usr/bin:/usr/pkg/bin:/usr/pkg/sbin
 
@@ -45,21 +45,41 @@ for domid in $(xenstore-list /local/domain) ; do
 		continue
 	fi
 	domnm=$(xenstore-read /local/domain/${domid}/name)
-	domtty=$(xenstore-read /local/domain/${domid}/console/tty)
-	if [ -z "${domtty}" ]; then
-		echo "error: ${domnm} has no console tty" 1>&2
+	domtty=$(xenstore-read /local/domain/${domid}/console/tty 2>/dev/null)
+	domstty=$(xenstore-read /local/domain/${domid}/serial/0/tty 2>/dev/null)
+	if [ -z "${domtty}" -a -z "${domstty}" ]; then
+		echo "error: ${domnm} has no console or serial tty" 1>&2
 		echo "#console ${domnm} {}"
 		continue;
 	fi
-	cat <<- _EOH_
-		console ${domnm} {
-		${tab}type device;
-		${tab}device ${domtty};
-		${tab}baud 115200;
-		${tab}parity none;
-		}
-	_EOH_
+	if [ -n "${domtty}" ]; then
+		# if there is a serial tty, it should have the default (simple)
+		# name, so append "-cons" to this one if domstty is set
+		cat <<- _EOH_
+			console ${domnm}${domstty:+"-cons"} {
+			${tab}type device;
+			${tab}device ${domtty};
+			${tab}baud 115200;
+			${tab}parity none;
+			}
+		_EOH_
+	fi
+	if [ -n "${domstty}" ]; then
+		cat <<- _EOH_
+			console ${domnm} {
+			${tab}type device;
+			${tab}device ${domstty};
+			${tab}baud 115200;
+			${tab}parity none;
+			}
+		_EOH_
+	fi
 done >> /usr/pkg/etc/xen/conserver.xen
+
+# XXX the above should probably write to a temporary file, but since the reload
+# will normally only be triggered below (i.e. not concurrently by
+# someone/something else, nothing should read conserver.xen while it is being
+# written.
 
 if [ "${1}" = "reload" ]; then
 	/etc/rc.d/conserver reload
