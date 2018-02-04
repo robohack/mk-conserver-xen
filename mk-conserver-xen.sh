@@ -2,11 +2,29 @@
 #
 #	mk-conserver-xen.sh
 #
-# install on dom0 host in /usr/pkg/etc/xen/scripts/mk-conserver-xen
+# install this on the dom0 host in /usr/pkg/etc/xen/scripts/mk-conserver-xen
 #
-# conserver.cf could define a task which runs "/etc/rc.d/conserver reload"
+# Follow the instructions in the rest of this comment to complete the
+# configuration of both conserver and Xen.
 #
-# /etc/rc.conf.d/conserver:
+# edit /usr/pkg/etc/conserver.cf to add (replacing XENHOST with $(hostname)):
+#
+#	#
+#	# Xen break into ddb
+#	#
+#	break 4 { string "+++++"; }
+#
+#	# at least one entry must exist at all times
+#	#
+#	console dummy-XENHOST {
+#		type exec;
+#	}
+#
+#	# this "#include" line is not a comment!
+#	#
+#	#include /usr/pkg/etc/xen/conserver.xen
+#
+# put the next section in /etc/rc.conf.d/conserver:
 #
 #	start_precmd=conserver_precmd
 #	reload_precmd=conserver_precmd
@@ -20,9 +38,10 @@
 #		fi
 #	}
 #
-# /etc/rc.d/xendomains:  edit to add "conserver" to the "REQUIRE:" line
+# edit /etc/rc.d/xendomains to add "conserver" (and "sshd") to the "REQUIRE:"
+# line
 #
-# /etc/rc.conf.d/xendomains:
+# put the next section in /etc/rc.conf.d/xendomains:
 #
 #	start_postcmd=xendomains_postcmd
 #	
@@ -30,7 +49,10 @@
 #		/usr/pkg/etc/xen/scripts/mk-conserver-xen reload
 #	}
 #
-#ident "@(#):mk-conserver-xen.sh,v 1.5 2017/12/28 16:34:39 woods Exp"
+# Now you can also run "/etc/rc.d/conserver reload" after you manually start a
+# new domU (or shut one down).
+#
+#ident "@(#):mk-conserver-xen.sh,v 1.6 2018/02/04 18:30:14 woods Exp"
 
 export PATH=/sbin:/bin:/usr/sbin:/usr/bin:/usr/pkg/bin:/usr/pkg/sbin
 
