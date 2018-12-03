@@ -62,12 +62,12 @@
 # Now you can also run "/etc/rc.d/conserver reload" after you manually start a
 # new domU (or shut one down).
 #
-#ident "@(#):mk-conserver-xen.sh,v 1.7 2018/11/30 01:44:42 woods Exp"
+#ident "@(#):mk-conserver-xen.sh,v 1.8 2018/12/03 03:16:51 woods Exp"
 
 export PATH=/sbin:/bin:/usr/sbin:/usr/bin:/usr/pkg/bin:/usr/pkg/sbin
 
 tab=$(printf "\t")
-have_domains=false
+have_domUs=false
 hostname=$(hostname)
 
 TMPFILE=$(mktemp "/usr/pkg/etc/xen/conserver.xen.XXXXXXXX")
@@ -82,7 +82,7 @@ for domid in $(xenstore-list /local/domain) ; do
 		# xenstored knows nothing about our own dom0 console
 		continue
 	fi
-	have_domains=true
+	have_domUs=true
 	domnm=$(xenstore-read /local/domain/${domid}/name)
 	domtty=$(xenstore-read /local/domain/${domid}/console/tty 2>/dev/null)
 	domstty=$(xenstore-read /local/domain/${domid}/serial/0/tty 2>/dev/null)
