@@ -62,7 +62,7 @@
 # Now you can also run "/etc/rc.d/conserver reload" after you manually start a
 # new domU (or shut one down).
 #
-#ident "@(#):mk-conserver-xen.sh,v 1.8 2018/12/03 03:16:51 woods Exp"
+#ident "@(#):mk-conserver-xen.sh,v 1.9 2019/04/07 21:00:53 woods Exp"
 
 export PATH=/sbin:/bin:/usr/sbin:/usr/bin:/usr/pkg/bin:/usr/pkg/sbin
 
@@ -95,7 +95,7 @@ for domid in $(xenstore-list /local/domain) ; do
 		# if there is a serial tty, it should have the default (simple)
 		# name, so append "-cons" to this one if domstty is set
 		cat <<- _EOH_
-			console ${domnm}${domstty:+"-cons"} {
+			console ${domnm}${domstty:+-cons} {
 			${tab}type device;
 			${tab}device ${domtty};
 			${tab}baud 115200;
