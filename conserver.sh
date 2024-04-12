@@ -20,8 +20,10 @@ conserver_precmd() {
 #		# at least one "console" entry must exist at all times
 #		#
 #		cat > /usr/pkg/etc/xen/conserver.xen <<- _EOH_
-#			console dummy-${hostname} {
+#			console empty-${hostname} {
 #			${tab}type exec;
+#		       	${tab}options ondemand;
+#			${tab}exec /usr/bin/true;
 #		}
 #		_EOH_
 	fi

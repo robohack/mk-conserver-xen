@@ -2,24 +2,36 @@
 #
 #	mk-conserver-xen.sh
 #
-# Install this on the dom0 host in /usr/pkg/etc/xen/scripts/mk-conserver-xen
+# Install this on the dom0 host in {/usr/pkg}/etc/xen/scripts/mk-conserver-xen
 #
 # Run this script by doing "/etc/rc.d/conserver8 reload"
 #
 # Follow the instructions in the rest of this comment to complete the
 # configuration of both conserver and Xen.
 #
-# edit /usr/pkg/etc/conserver.cf to add (replacing XENHOST with $(hostname)):
+# edit {/usr/pkg}/etc/conserver.cf to add (replacing XENHOST with $(hostname)):
 #
 #	#
 #	# Xen break into ddb
 #	#
 #	break 4 { string "+++++"; }
 #	
+#	# if only handling Xen consoles then add a dummy console to
+#	# allow for starting conserver when no Xen domains are (yet)
+#	# running.
+#	#
+#	console dummy-xentastic {
+#	        type exec;
+#		options ondemand;
+#	        exec /usr/bin/true;
+#	}
+#
 #	# this "#include" line is not a comment!
 #	# (iff it is preceded by a blank line)
 #	
 #	#include /usr/pkg/etc/xen/conserver.xen
+#
+# NOTICE:  watch out for unwanted /usr/pkg above!
 #
 # put the next section in /etc/rc.conf.d/conserver:
 #
@@ -27,9 +39,11 @@
 #	reload_precmd=conserver_precmd
 #	
 #	conserver_precmd() {
-#		xenstored_pid=$(check_pidfile /var/run/xenstored.pid /usr/pkg/sbin/xenstored)
+#               XEN_SYSCONFDIR=$(/usr/sbin/pkg_info -Q PKG_SYSCONFDIR xentools\* | sed -n 1p)
+#               XEN_PREFIX=$(/usr/sbin/pkg_info -Q PREFIX xentools\* | sed -n 1p)
+#		xenstored_pid=$(check_pidfile /var/run/xenstored.pid ${XEN_PREFIX}/sbin/xenstored)
 #		if [ -n "${xenstored_pid}" ]; then
-#			/usr/pkg/etc/xen/scripts/mk-conserver-xen
+#			${XEN_SYSCONFDIR}/xen/scripts/mk-conserver-xen
 #	#
 #	# n.b.:  if domU changes are frequent between boots then the config file
 #	# will not reflect how it will look after a dom0 reboot, so clear it to
@@ -38,9 +52,11 @@
 #	#	else
 #	#		# at least one "console" entry must exist at all times
 #	#		#
-#	#		cat > /usr/pkg/etc/xen/conserver.xen <<- _EOH_
-#	#			console dummy-${hostname} {
+#	#		cat > ${XEN_SYSCONFDIR}/xen/conserver.xen <<- _EOH_
+#	#			console empty-${hostname} {
 #	#			${tab}type exec;
+#	#		       	${tab}options ondemand;
+#	#			${tab}exec /usr/bin/true;
 #	#		}
 #	#		_EOH_
 #		fi
@@ -56,7 +72,8 @@
 #	start_postcmd=xendomains_postcmd
 #	
 #	xendomains_postcmd() {
-#		/usr/pkg/etc/xen/scripts/mk-conserver-xen reload
+#               XEN_SYSCONFDIR=$(/usr/sbin/pkg_info -Q PKG_SYSCONFDIR xentools\* | sed -n 1p)
+#		${XEN_SYSCONFDIR}/xen/scripts/mk-conserver-xen reload
 #	}
 #
 # Now you can also run "/etc/rc.d/conserver reload" after you manually start a
@@ -66,14 +83,19 @@
 
 export PATH=/sbin:/bin:/usr/sbin:/usr/bin:/usr/pkg/bin:/usr/pkg/sbin
 
+XEN_SYSCONFDIR=$(/usr/sbin/pkg_info -Q PKG_SYSCONFDIR xentools\* | sed -n 1p)
+XEN_PREFIX=$(/usr/sbin/pkg_info -Q PREFIX xentools\* | sed -n 1p)
+
 tab=$(printf "\t")
 have_domUs=false
 hostname=$(hostname)
 
-TMPFILE=$(mktemp "/usr/pkg/etc/xen/conserver.xen.XXXXXXXX")
-CONSERVER_XEN="/usr/pkg/etc/xen/conserver.xen"
+TMPFILE=$(mktemp "${XEN_SYSCONFDIR}/xen/conserver.xen.XXXXXXXX")
+CONSERVER_XEN="${XEN_SYSCONFDIR}/xen/conserver.xen"
 
 ###echo $0: dom0=${hostname}: rebuilding ${CONSERVER_XEN}
+
+# xxx could/should there be an exit trap to clean up $TMPFILE???
 
 echo "# DO NOT MODIFY -- cretated entirely by ${0}" > ${TMPFILE}
 
@@ -132,7 +154,7 @@ if [ ${rc} -ne 0 ]; then
 	exit ${rc}
 fi
 
-if cmp ${TMPFILE} ${CONSERVER_XEN}; then
+if cmp ${TMPFILE} ${CONSERVER_XEN} >/dev/null 2>&1; then
 	echo ${CONSERVER_XEN}: no change 1>&2
 	rm ${TMPFILE}
 	exit 0
