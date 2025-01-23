@@ -2,7 +2,8 @@
 #
 #	mk-conserver-xen.sh
 #
-# Install this on the dom0 host in {/usr/pkg}/etc/xen/scripts/mk-conserver-xen
+# Install this on the dom0 host as mk-conserver-xen in the ${XEN_SCRIPT_DIR},
+# aka {/usr/pkg}/etc/xen/scripts/
 #
 # Run this script by doing "/etc/rc.d/conserver8 reload"
 #
@@ -20,7 +21,7 @@
 #	# allow for starting conserver when no Xen domains are (yet)
 #	# running.
 #	#
-#	console dummy-xentastic {
+#	console dummy-XENHOST {
 #	        type exec;
 #		options ondemand;
 #	        exec /usr/bin/true;
@@ -37,13 +38,13 @@
 #
 #	start_precmd=conserver_precmd
 #	reload_precmd=conserver_precmd
-#	
+#	#
 #	conserver_precmd() {
-#               XEN_SYSCONFDIR=$(/usr/sbin/pkg_info -Q PKG_SYSCONFDIR xentools\* | sed -n 1p)
-#               XEN_PREFIX=$(/usr/sbin/pkg_info -Q PREFIX xentools\* | sed -n 1p)
-#		xenstored_pid=$(check_pidfile /var/run/xenstored.pid ${XEN_PREFIX}/sbin/xenstored)
+#		. /etc/xen/scripts/hotplugpath.sh
+#		export PATH=/sbin:/bin:/usr/sbin:/usr/bin:${sbindir}:${bindir}
+#		xenstored_pid=$(check_pidfile ${XEN_RUN_DIR}/xenstored.pid ${sbindir}/xenstored)
 #		if [ -n "${xenstored_pid}" ]; then
-#			${XEN_SYSCONFDIR}/xen/scripts/mk-conserver-xen
+#			${XEN_SCRIPT_DIR}/mk-conserver-xen
 #	#
 #	# n.b.:  if domU changes are frequent between boots then the config file
 #	# will not reflect how it will look after a dom0 reboot, so clear it to
@@ -52,7 +53,7 @@
 #	#	else
 #	#		# at least one "console" entry must exist at all times
 #	#		#
-#	#		cat > ${XEN_SYSCONFDIR}/xen/conserver.xen <<- _EOH_
+#	#		cat > ${XEN_CONFIG_DIR}/conserver.xen <<- _EOH_
 #	#			console empty-${hostname} {
 #	#			${tab}type exec;
 #	#		       	${tab}options ondemand;
@@ -67,13 +68,13 @@
 #
 #	REQUIRE: xencommons conserver sshd
 #
-# put the next section in /etc/rc.conf.d/xendomains:
+# put the next section in /etc/rc.conf.d/xendomains (after the sourcing of the
+# hotplugpath.sh configuration script):
 #
 #	start_postcmd=xendomains_postcmd
-#	
+#	#
 #	xendomains_postcmd() {
-#               XEN_SYSCONFDIR=$(/usr/sbin/pkg_info -Q PKG_SYSCONFDIR xentools\* | sed -n 1p)
-#		${XEN_SYSCONFDIR}/xen/scripts/mk-conserver-xen reload
+#		${XEN_SCRIPT_DIR}/mk-conserver-xen reload
 #	}
 #
 # Now you can also run "/etc/rc.d/conserver reload" after you manually start a
@@ -81,21 +82,46 @@
 #
 #ident "@(#):mk-conserver-xen.sh,v 1.9 2019/04/07 21:00:53 woods Exp"
 
-export PATH=/sbin:/bin:/usr/sbin:/usr/bin:/usr/pkg/bin:/usr/pkg/sbin
+# xxx there's a chicken&egg problem here -- but we can assume there is an
+# /etc/rc.d/xendomains RC script, and it should have an
+# /etc/rc.conf.d/xendomains configuration file that sources the main Xen
+# "hotplugpath.sh" configuration file.
+#
+if [ -r /etc/rc.conf.d/xendomains ]; then
+	# the "new" way to configure Xen paths is via the hotplugpath.sh
+	# script, which must be sourced by the /etc/rc.conf.d/xen* configuration
+	# files:
+	. /etc/rc.conf.d/xendomains
+else
+	# else if this is an old Xen installation, find the hotplugpath.sh
+	# script via pkg_info, or guess
+	#
+	sbindir=${PKG:-"/usr/pkg"}/sbin
+	bindir=${PKG:-"/usr/pkg"}/bin
+	export PATH=/sbin:/bin:/usr/sbin:/usr/bin:${sbindir}:${bindir}
 
-XEN_SYSCONFDIR=$(/usr/sbin/pkg_info -Q PKG_SYSCONFDIR xentools\* | sed -n 1p)
-XEN_PREFIX=$(/usr/sbin/pkg_info -Q PREFIX xentools\* | sed -n 1p)
+	if type pkg_info >/dev/null 2>&1; then
+		XEN_SYSCONFDIR=$(pkg_info -Q PKG_SYSCONFDIR xentools\* | tail -1)
+		XEN_CONFIG_DIR=${XEN_SYSCONFDIR}/xen
+		XEN_SCRIPT_DIR=${XEN_SYSCONFDIR}/xen/scripts
+	else
+		XEN_CONFIG_DIR=/etc/xen
+		XEN_SCRIPT_DIR=/etc/xen/scripts
+	fi
+	. ${XEN_SCRIPT_DIR}/hotplugpath.sh
+fi
+export PATH=/sbin:/bin:/usr/sbin:/usr/bin:${sbindir}:${bindir}
 
 tab=$(printf "\t")
 have_domUs=false
 hostname=$(hostname)
 
-TMPFILE=$(mktemp "${XEN_SYSCONFDIR}/xen/conserver.xen.XXXXXXXX")
-CONSERVER_XEN="${XEN_SYSCONFDIR}/xen/conserver.xen"
-
-###echo $0: dom0=${hostname}: rebuilding ${CONSERVER_XEN}
+CONSERVER_XEN="${XEN_CONFIG_DIR}/conserver.xen"
+TMPFILE=$(mktemp "${CONSERVER.XEN}.XXXXXXXX")
 
 # xxx could/should there be an exit trap to clean up $TMPFILE???
+
+###echo $0: dom0=${hostname}: rebuilding ${CONSERVER_XEN}
 
 echo "# DO NOT MODIFY -- cretated entirely by ${0}" > ${TMPFILE}
 
